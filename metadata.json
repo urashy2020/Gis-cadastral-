@@ -1,0 +1,6 @@
+{
+  "name": "Cadastral CAD & GIS Studio",
+  "description": "Interactive AutoCAD-style survey point editor for connecting parcels, naming parts, removing near or selected points, and exporting DXF, SCR, KML, Shapefiles, and Satellite layouts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

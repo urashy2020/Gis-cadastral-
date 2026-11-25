@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GstarCAD Parcel & Building Polygon Tool</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.9.2/dist/proj4.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
+<style>
+ :root{--bg:#0b1220;--card:#121c33;--line:#22345a;--ac:#22d3ee;--gold:#fbbf24;--tx:#e2e8f0;--mu:#8da2c4}
+ *{box-sizing:border-box} body{margin:0;font-family:'Segoe UI',Tahoma,sans-serif;background:radial-gradient(circle at 20% 0,#16264a,var(--bg) 60%);color:var(--tx);padding:22px}
+ .wrap{max-width:1180px;margin:auto} header{text-align:center;margin-bottom:20px}
+ h1{margin:0;font-size:28px;letter-spacing:.5px;background:linear-gradient(90deg,var(--ac),var(--gold));-webkit-background-clip:text;color:transparent}
+ .s{color:var(--mu);font-size:13px;margin:6px 0 0}
+ .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 6px 24px #0006}
+ .card h2{margin:0 0 12px;font-size:15px;color:var(--ac);text-transform:uppercase;letter-spacing:1px}
+ .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.g2 .card{margin:0}.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+ .set{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px}
+ label{display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--mu)}
+ select,input[type=number],input[type=file]{width:100%;padding:7px;border:1px solid var(--line);border-radius:7px;background:#0b1530;color:var(--tx)}
+ .chk label{display:flex;gap:7px;align-items:center;font-weight:400;color:var(--tx);margin:5px 0}
+ button{border:0;border-radius:9px;padding:11px 14px;font-weight:700;cursor:pointer;font-size:13px;color:#06202b;background:linear-gradient(90deg,var(--ac),#67e8f9);width:100%}
+ button.y{background:linear-gradient(90deg,var(--gold),#fde68a)} button.d{background:#1e3057;color:var(--tx)} button:hover{filter:brightness(1.1)}
+ .hid{display:none}.st{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}.st b{display:block;font-size:17px;color:var(--gold)}.st span{font-size:11px;color:var(--mu)}
+ #map{height:400px;border-radius:10px;margin-bottom:12px} #cv{width:100%;height:400px;object-fit:contain;background:#fff;border-radius:10px;margin-bottom:12px;display:block}
+ .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid var(--line);padding:7px 10px;text-align:center}th{background:#16305e;color:var(--ac)}tr.t td{font-weight:700;background:#1b2c52;color:var(--gold)}
+ .warn{background:#3a2f0b;border:1px solid #8a6d12;color:#fde68a;padding:10px;border-radius:8px;font-size:13px;margin-bottom:18px}
+ textarea{width:100%;height:200px;font:12px monospace;background:#050b18;color:#7dd3fc;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:10px}
+ details summary{cursor:pointer;color:var(--mu);font-size:13px}
+ @media(max-width:800px){.g2,.g4,.g5{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}}
+.tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+ button.on{outline:2px solid var(--gold)} button:disabled{opacity:.4;cursor:not-allowed;filter:none}
+ #map{height:520px!important}.ptl{background:#000a;border:0;color:#fff;font-size:10px;padding:1px 3px;box-shadow:none}.ptl:before{display:none}
+ #ctab{direction:rtl}#ctab table{direction:ltr}#ctab .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}#ctab .row button{width:auto}#ctab input[type=file]{width:auto;max-width:100%}
+ #ctmsg{min-height:1.4em;font-size:13px;color:var(--mu);margin-top:8px}#ctmsg.ok{color:#4ade80}#ctmsg.err{color:#f87171}#ctab .tw{overflow-x:auto}
+ .tabs{display:flex;gap:8px;margin-bottom:18px}.tab{flex:1;background:#1e3057;color:var(--tx)}.tab.on{background:linear-gradient(90deg,var(--ac),#67e8f9);color:#06202b;outline:0}
+ #pv{width:100%;height:660px;border-radius:10px;display:block;cursor:grab;touch-action:none;background:#fff;margin-bottom:8px}#pv:active{cursor:grabbing}
+ .g6{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+ .lg span{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 12px;vertical-align:middle}
+</style>
+</head>
+<body><div class="wrap">
+<header><h1>Cadastral &amp; GIS Polygon Studio</h1><p class="s">Survey points → CAD script · satellite view · KML · Shapefiles (WGS84 / UTM 36N) · site layout</p></header>
+<div class="tabs"><button id="topS" class="tab on" onclick="showTop('S')">🗺 Cadastral studio</button><button id="topC" class="tab" onclick="showTop('C')">📋 Coordinates table · جدول الإحداثيات</button><button id="topA" class="tab" onclick="showTop('A')">🧩 Excel → AutoCAD · نقل البيانات للأوتوكاد</button></div>
+<div id="pStudio">
+
+<div class="card"><h2>1 · Load points</h2>
+ <input type="file" id="f" accept=".csv,.xlsx,.xls"><span id="fn" class="s" style="display:block">CSV / Excel: ID, X (Easting), Y (Northing), Z (optional), Part code (optional) — UTM WGS84 zone 36N</span>
+ <div id="set" class="set hid">
+  <div><label>Point ID column</label><select id="cID"></select></div>
+  <div><label>X column (Easting)</label><select id="cX"></select></div>
+  <div><label>Y column (Northing)</label><select id="cY"></select></div>
+  <div><label>Z column</label><select id="cZ"></select></div>
+  <div><label>Part code column</label><select id="cC"></select></div>
+  <div><label>Duplicate tolerance (m)</label><input type="number" id="tol" value="0.20" step="0.05"></div>
+  <div><label>CAD text height (0 = auto)</label><input type="number" id="th" value="0" step="0.1" min="0"></div>
+  <div class="chk"><label><input type="checkbox" id="hull"> Convex hull instead of file order</label><label><input type="checkbox" id="pts" checked> CAD: points + IDs</label><label><input type="checkbox" id="dim" checked> CAD: dimension edges</label><label><input type="checkbox" id="north" checked> CAD: north arrow</label><label><input type="checkbox" id="pnm" class="nmc" checked> CAD: part names</label></div>
+  <div style="display:flex;align-items:end"><button class="y" onclick="run()">⚡ Process points</button></div>
+ </div>
+ <p class="s hid" id="hint">Parts come from the <b>Part code column</b>; with “None”, a blank row starts a new part. Points follow file order.</p>
+</div>
+
+<div id="out" class="hid">
+ <div id="stats" class="g5"></div><div id="msg"></div>
+ <div class="tabs"><button id="tabA" class="tab on" onclick="showTab('A')">🗂 Editor &amp; outputs</button><button id="tabB" class="tab" onclick="showTab('B')">📐 CAD preview · site layout with dimensions</button></div>
+ <div id="tMain">
+ <div class="card"><h2>🎯 Point editor · Google satellite</h2>
+ <div class="tb">
+  <button id="mV" class="d" onclick="setMode('view')">✋ View</button>
+  <button id="mD" class="d" onclick="setMode('delete')">🗑 Pick points to delete</button>
+  <button id="mC" class="d" onclick="setMode('connect')">🔗 Pick points to connect</button>
+  <button class="d" onclick="nextNear()">⏭ Next near pair</button>
+  <button class="d" onclick="nearDel();edited()">Delete all near (keep first)</button>
+  <button class="d" onclick="DEL.clear();AUTO.clear();edited()">↩ Restore deleted</button>
+  <button class="d" onclick="manUndo()">⌫ Undo connect point</button>
+  <button class="d" onclick="manClear()">✖ Clear connection</button>
+ </div>
+ <div class="chk" style="display:flex;gap:18px;flex-wrap:wrap"><label><input type="checkbox" id="useMan" onchange="edited()"> Use manual boundary (connected points)</label><label><input type="checkbox" id="showId" checked onchange="edited()"> Show point IDs</label><label><input type="checkbox" id="autoNear" checked> Auto-delete one of each near pair (within tolerance, keeps the first)</label></div>
+ <p class="s lg"><span style="background:#22d3ee"></span>point<span style="background:#facc15"></span>near another point (within tolerance)<span style="background:#ef4444"></span>deleted<span style="background:#f97316"></span>connect order — <b>Connect</b>: click the boundary points in order, click the 1st again to finish</p>
+ <div id="map"></div><p class="s" id="edmsg"></p>
+ <button class="y" onclick="regenerate()">🔄 Regenerate all outputs</button></div>
+ <div class="card"><h2>🏷 Part names</h2><p class="s">Type a new name in any box (e.g. A, B, C). Press <b>Regenerate</b> afterwards to update the table, CAD file, layout, satellite image and shapefiles.</p><div id="names" class="set"></div>
+ <div class="two" style="margin-top:12px"><button class="y" onclick="nameLetters()">Name parts A, B, C…</button><button class="d" onclick="nameOrig()">Restore original names</button></div></div>
+ <div class="g2" style="margin-top:18px">
+  <div class="card"><h2>🛰 Satellite image · Google · 800×600</h2><canvas id="sat" style="width:100%;aspect-ratio:4/3;background:#222;border-radius:10px;display:block;margin-bottom:8px"></canvas><p class="s" id="satMsg"></p>
+   <div class="two" style="margin-bottom:10px"><div><label>Zoom (0 = auto fit)</label><input type="number" id="zm" value="0" min="0" max="21" onchange="markStale()"></div><div class="chk"><label><input type="checkbox" id="satId" onchange="markStale()"> Point IDs on image</label></div></div>
+   <div class="two"><button class="dlb sb y" onclick="satSave('png')">Download PNG</button><button class="dlb sb d" onclick="satSave('jpg')">Download JPG</button></div></div>
+  <div class="card"><h2>📐 CAD site layout</h2><div class="chk"><label><input type="checkbox" class="nmc" checked> Show part names (untick = layout with no part names)</label></div><canvas id="cv"></canvas><div class="two"><button class="dlb y" onclick="lay('jpg')">Download layout JPG</button><button class="dlb d" onclick="lay('png')">Download PNG</button></div></div>
+ </div>
+ <div class="card" style="margin-top:18px"><h2>Area statement</h2><table id="tbl"></table></div>
+ <div class="card"><h2>⬇ Downloads</h2><div id="stale" class="warn hid">Edits or settings changed — press <b>Regenerate</b> to refresh every output before downloading.</div><button class="y" style="margin-bottom:12px" onclick="regenerate()">🔄 Regenerate all outputs</button><div class="g4">
+  <button class="dlb " onclick="kml()">KML · boundary + centre point</button>
+  <button class="dlb " onclick="zipShp('all')">Shapefile · coordinates + building_or_land</button>
+  <button class="dlb y" onclick="zipShp('rasm')">export rasm elkhareta (.zip)</button>
+  <button class="dlb d" onclick="dl()">CAD file (.scr)</button>
+  <button class="dlb y" onclick="dxf()">DXF file (.dxf) — opens in AutoCAD / GstarCAD</button></div>
+  <details><summary>Show / copy GstarCAD script</summary><button class="d" style="margin-top:8px" onclick="cp()">📋 Copy script</button><textarea id="scr" readonly></textarea></details>
+ </div>
+ </div>
+ <div id="tPrev" class="hid">
+  <div class="card"><h2>📐 CAD preview · site layout with dimensions</h2>
+   <div class="chk" style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">
+    <label><input type="checkbox" class="nmc" checked> Part names</label>
+    <label><input type="checkbox" id="pvDim" checked> Dimensions</label>
+    <label><input type="checkbox" id="pvPts" checked> Points + IDs</label>
+    <label><input type="checkbox" id="pvArea"> Areas</label>
+    <label><input type="checkbox" id="pvNorth" checked> North arrow</label>
+    <label><input type="checkbox" id="pvDark"> Dark (CAD model space)</label>
+    <label style="min-width:230px">Dimension text size: <b id="pvDfv">22</b> px<input type="range" id="pvDf" min="10" max="60" value="22" style="width:100%;padding:0"></label>
+   </div>
+   <canvas id="pv"></canvas>
+   <p class="s">Scroll to zoom · drag to pan · double-click to fit. Part names, dimensions, points and north arrow are the same switches used for the CAD file (.dxf / .scr), so what you see here is what gets exported. Dimensions are in metres.</p>
+   <div class="g6">
+    <button class="d" onclick="pvZoom(1.4)">＋ Zoom in</button><button class="d" onclick="pvZoom(1/1.4)">－ Zoom out</button><button class="d" onclick="PV.fit=true;pvDraw()">⤢ Fit</button>
+    <button class="dlb y" onclick="pvSave('png')">Download preview PNG</button><button class="dlb d" onclick="pvSave('jpg')">Download preview JPG</button><button class="dlb y" onclick="dxf()">DXF file (.dxf)</button>
+   </div>
+  </div>
+ </div>
+</div>
+</div>
+<div id="pCoord" class="hid"><div id="ctab">
+ <div class="card"><h2>رفع ملف ومعالجته</h2>
+  <p class="s" id="ctmeta">UTM Zone 36 North — WGS 1984 — الوحدات بالمتر</p>
+  <div class="row"><input type="file" id="ctfile" accept=".xlsx,.xls,.csv,.txt"><button class="y" id="ctproc" disabled>معالجة</button></div>
+  <div id="ctmsg" role="status"></div></div>
+ <div class="card"><div class="tw"><table id="ctt"><thead><tr><th>ID</th><th>Easting (Meter)</th><th>Northing (Meter)</th><th>Elevation (Meter)</th><th>Feature Code</th></tr></thead><tbody></tbody></table></div>
+  <p class="s" id="ctcount" style="margin-top:10px"></p>
+  <div class="tb" style="margin-top:8px"><button class="y" id="ctuse">➡ استخدام هذه النقاط في الأداة · Use these points in the studio</button><button class="d" id="ctdl">تحميل Excel (xlsx)</button><button class="d" id="ctcopy">نسخ الجدول</button></div></div>
+</div></div>
+<div id="pCad" class="hid"><div id="atab">
+ <div class="card"><h2>نقل البيانات من الاكسل إلى الأوتوكاد · Excel → AutoCAD commands</h2>
+  <p class="s">Same idea as your Excel sheet (original design: المساح علي عبدالخالق): choose a drawing command, set the options, then copy the generated lines and paste them into the AutoCAD / GstarCAD command line — or download them as a .scr script.</p>
+  <div class="two"><div><label>Points file (xlsx / xlsm / csv) — needs Easting &amp; Northing columns</label><input type="file" id="acFile" accept=".xlsx,.xlsm,.xls,.csv,.txt"></div>
+   <div style="display:flex;align-items:end"><button class="d" id="acUseC">Use the table from the Coordinates tab</button></div></div>
+  <p class="s" id="acSrc"></p>
+  <div class="set">
+   <div><label>Drawing command · أمر الرسم</label><select id="acMode">
+    <option value="px">Point XY</option><option value="pxz">Point XYZ</option><option value="num" selected>Point Number Text</option><option value="lvl">Level As Text</option>
+    <option value="dsc">Description Text</option><option value="lbl">Coordinates Label</option><option value="pol">Polygon</option><option value="cir">Circle</option><option value="lin">Line</option><option value="ply">Polyline</option></select></div>
+   <div><label>Text height</label><input type="number" id="acTH" value="1" step="0.1" min="0.01"></div>
+   <div><label>Text rotation (°)</label><input type="number" id="acRot" value="0" step="1"></div>
+   <div><label>Text offset X (m)</label><input type="number" id="acOX" value="0.25" step="0.05"></div>
+   <div><label>Text offset Y (m)</label><input type="number" id="acOY" value="0.25" step="0.05"></div>
+   <div><label>Polygon: number of sides</label><input type="number" id="acSides" value="4" min="3" step="1"></div>
+   <div><label>Radius (polygon / circle)</label><input type="number" id="acR" value="1" step="0.1" min="0.001"></div>
+   <div class="chk"><label><input type="checkbox" id="acJ" checked> Text: centre-justify (Middle-Centre) on the first line</label><label><input type="checkbox" id="acClose"> Line / Polyline: close the shape</label></div>
+  </div>
+ </div>
+ <div class="card"><h2>Generated lines · انسخ والصق في الأوتوكاد</h2>
+  <p class="s" id="acInfo"></p>
+  <textarea id="acOut" readonly dir="ltr" style="height:280px"></textarea>
+  <div class="two" style="margin-top:10px"><button class="y" id="acCopy">📋 Copy for AutoCAD command line</button><button class="d" id="acDl">Download .scr script</button></div>
+  <p class="s">Paste: click the AutoCAD command line, press Ctrl+V. Text commands expect a fresh command prompt; Line and Polyline are one chained command (the points are listed after a single LINE / PLINE).</p>
+ </div>
+</div></div>
+</div>
+
+<script>
+const FED = 4200.833, SAH = FED / 576;   // 1 feddan = 24 qirat = 576 sahm
+let rows = [], parts = [];
+const $ = id => document.getElementById(id);
+
+$('f').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  $('fn').textContent = file.name;
+  const r = new FileReader();
+  r.onload = ev => {
+    const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, blankrows: true});
+    setup();
+  };
+  r.readAsArrayBuffer(file);
+});
+
+const hasHeader = () => rows[0].some(h => typeof h === 'string' && isNaN(h));
+
+function setup() {
+  const h = hasHeader(), n = Math.max(...rows.slice(0, 20).map(r => r.length));
+  const opts = [...Array(n)].map((_, i) => `<option value="${i}">${h && rows[0][i] ? rows[0][i] : 'Column ' + (i + 1)}</option>`).join('');
+  ['cID', 'cX', 'cY'].forEach(id => $(id).innerHTML = opts);
+  $('cZ').innerHTML = '<option value="-1">-- None --</option>' + opts;
+  $('cC').innerHTML = '<option value="-1">-- None --</option>' + opts;
+  const s = h ? 1 : 0, a = parseFloat(rows[s][1]), b = parseFloat(rows[s][2]);
+  $('cID').value = 0;
+  if (a > b && a > 1e6) { $('cX').value = 2; $('cY').value = 1; } else { $('cX').value = 1; $('cY').value = 2; }
+  if (n >= 4) $('cZ').value = 3;
+  if (h) { const k = rows[0].findIndex(t => /code|part|parcel|plot|build|block|land|name|كود|قطعة|مبنى/i.test(t)); if (k > -1) $('cC').value = k; }
+  ['set', 'hint'].forEach(i => $(i).classList.remove('hid'));
+}
+
+function hullOf(p) {
+  p = [...p].sort((a, b) => a.x - b.x || a.y - b.y); if (p.length < 3) return p;
+  const cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x), lo = [], up = [];
+  for (const q of p) { while (lo.length > 1 && cr(lo.at(-2), lo.at(-1), q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of [...p].reverse()) { while (up.length > 1 && cr(up.at(-2), up.at(-1), q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+
+function crosses(p) {
+  const n = p.length, o = (a, b, c) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+    if (i === 0 && j === n - 1) continue;
+    const a = p[i], b = p[(i + 1) % n], c = p[j], d = p[(j + 1) % n];
+    if (o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0) return true;
+  }
+  return false;
+}
+
+function measure(p) {
+  let A = 0, cx = 0, cy = 0; const n = p.length;
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n], w = a.x * b.y - b.x * a.y;
+    A += w; cx += (a.x + b.x) * w; cy += (a.y + b.y) * w;
+  }
+  const area = Math.abs(A / 2);
+  let c = area > 1e-9 ? {x: cx / (3 * A), y: cy / (3 * A)} : {x: p.reduce((s, q) => s + q.x, 0) / n, y: p.reduce((s, q) => s + q.y, 0) / n};
+  // keep label inside the polygon: scan along the centroid's horizontal line
+  const xs = [];
+  for (let i = 0; i < n; i++) { const a = p[i], b = p[(i + 1) % n]; if ((a.y > c.y) !== (b.y > c.y)) xs.push(a.x + (c.y - a.y) * (b.x - a.x) / (b.y - a.y)); }
+  xs.sort((a, b) => a - b);
+  let best = null, bw = -1, lp = c;
+  for (let k = 0; k + 1 < xs.length; k += 2) {
+    if (xs[k] <= c.x && c.x <= xs[k + 1]) { best = null; break; }
+    if (xs[k + 1] - xs[k] > bw) { bw = xs[k + 1] - xs[k]; best = (xs[k] + xs[k + 1]) / 2; }
+  }
+  if (best !== null) lp = {x: best, y: c.y};
+  return {area, lp, ccw: A > 0};
+}
+
+function fqs(a) {   // feddan - qirat - sahm
+  const S = Math.round(a / SAH * 100), f = Math.floor(S / 57600), r = S % 57600;
+  return `${f}F-${Math.floor(r / 2400)}Q-${((r % 2400) / 100).toFixed(2)}S`;
+}
+
+let AUTO=new Set(),NAMES=new Map(),GR=new Map(),PT=new Map(),DEL=new Set(),MAN=[],MODE='view',NEAR=new Set(),PAIRS=[],MDONE=false,exact=0,NI=-1,SATTOK=0,SK=[],BAD=[];
+const llq=q=>{const c=toLL(q.x,q.y);return[c[1],c[0]];};
+
+function run() {
+  if ((DEL.size || MAN.length) && !confirm('Reloading the points resets your manual edits. Continue?')) return;
+  const g = id => parseInt($(id).value), cI = g('cID'), cX = g('cX'), cY = g('cY'), cZ = g('cZ'), cC = g('cC'), s = hasHeader() ? 1 : 0;
+  GR = new Map(); AUTO = new Set(); NAMES = new Map(); PT = new Map(); DEL = new Set(); MAN = []; MDONE = false; exact = 0; $('useMan').checked = false;
+  let cur = null, auto = 0;
+  for (let i = s; i < rows.length; i++) {
+    const r = rows[i] || [], x = parseFloat(r[cX]), y = parseFloat(r[cY]);
+    if (isNaN(x) || isNaN(y)) { if (cC < 0) cur = null; continue; }
+    let name;
+    if (cC >= 0) { name = r[cC] === undefined ? '' : String(r[cC]).trim(); if (!name) continue; }
+    else { if (!cur) cur = 'P' + (++auto); name = cur; }
+    const pt = {key: name + '|' + i, id: r[cI] !== undefined ? String(r[cI]).trim() : String(i + 1), x, y, z: cZ >= 0 ? (parseFloat(r[cZ]) || 0) : 0};
+    if (!GR.has(name)) GR.set(name, []);
+    const a = GR.get(name);
+    if (a.some(e => Math.hypot(x - e.x, y - e.y) < 0.001)) { exact++; continue; }   // identical coordinates only
+    a.push(pt); PT.set(pt.key, pt);
+  }
+  if (![...GR.values()].some(a => a.length >= 3)) { alert('No part with at least 3 valid points. Check the column selection.'); return; }
+  if (cC < 0) nameLetters(true); else nameOrig(true);
+  if ($('autoNear').checked) nearDel();
+  $('out').classList.remove('hid'); initMap(); setMode('view'); regenerate(true);
+}
+const letter = i => { let t = ''; i++; while (i > 0) { const r = (i - 1) % 26; t = String.fromCharCode(65 + r) + t; i = Math.floor((i - 1) / 26); } return t; };
+function nameLetters(silent) { [...GR.keys()].forEach((k, i) => NAMES.set(k, letter(i))); showNames(); if (!silent) { markStale(); } }
+function nameOrig(silent) { [...GR.keys()].forEach(k => NAMES.set(k, k)); showNames(); if (!silent) { markStale(); } }
+function showNames() {
+  $('names').innerHTML = [...GR].map(([k, a]) => `<div><label>Source: ${k.replace(/</g, '&lt;')} · ${a.length} pts</label><input type="text" data-k="${k.replace(/"/g, '&quot;')}" value="${(NAMES.get(k) || k).replace(/"/g, '&quot;')}" style="width:100%;padding:7px;border:1px solid var(--line);border-radius:7px;background:#0b1530;color:var(--tx)"></div>`).join('');
+  $('names').querySelectorAll('input').forEach(i => i.addEventListener('change', () => { NAMES.set(i.dataset.k, i.value.trim() || i.dataset.k); if (!i.value.trim()) i.value = i.dataset.k; edited(); }));
+}
+function nearDel() { const tol = parseFloat($('tol').value) || .2; for (const a of GR.values()) { const k = []; for (const q of a) { if (DEL.has(q.key)) continue; if (k.some(e => Math.hypot(q.x - e.x, q.y - e.y) < tol)) { DEL.add(q.key); AUTO.add(q.key); } else k.push(q); } } }
+
+function compute() {
+  const tol = parseFloat($('tol').value) || .2; parts = []; NEAR = new Set(); PAIRS = []; SK = []; BAD = [];
+  for (const [src, raw] of GR) {
+    const name = NAMES.get(src) || src, p = raw.filter(q => !DEL.has(q.key));
+    for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) if (Math.hypot(p[i].x - p[j].x, p[i].y - p[j].y) < tol) { NEAR.add(p[i].key); NEAR.add(p[j].key); PAIRS.push([p[i], p[j]]); }
+    if (p.length < 3) { SK.push(name); continue; }
+    const hl = $('hull').checked, pts = hl ? hullOf(p) : p;
+    if (!hl && crosses(pts)) BAD.push(name);
+    parts.push({name, pts, ...measure(pts)});
+  }
+  if (!parts.length) { G = null; return false; }
+  let b = null, man = false, u = null;
+  if ($('useMan').checked) { const r = MAN.map(k => PT.get(k)).filter(q => q && !DEL.has(q.key)); if (r.length >= 3) { b = r.map(q => [q.x, q.y]); man = true; } }
+  if (!b) {
+    try { u = polygonClipping.union(...parts.map(p => [[...p.pts.map(q => [q.x, q.y]), [p.pts[0].x, p.pts[0].y]]])); } catch (e) {}
+    b = (u && u.length === 1) ? u[0][0].slice(0, -1) : hullOf(parts.flatMap(p => p.pts)).map(q => [q.x, q.y]);
+  }
+  const bm = measure(b.map(([x, y]) => ({x, y}))), c = toLL(bm.lp.x, bm.lp.y);
+  G = {b, bm, c, man, merged: man || !!(u && u.length === 1)};
+  const ll = r => r.map(([x, y]) => { const q = toLL(x, y); return [q[1], q[0]]; });
+  G.bLL = ll(b); G.pLL = parts.map(p => ({n: p.name, r: ll(p.pts.map(q => [q.x, q.y])), lp: (q => [q[1], q[0]])(toLL(p.lp.x, p.lp.y))}));
+  return true;
+}
+
+function initMap() {
+  if (map) return;
+  map = L.map('map', {maxZoom: 22, preferCanvas: true}).setView([30.5, 31], 7);
+  const g = l => L.tileLayer(`https://mt{s}.google.com/vt/lyrs=${l}&x={x}&y={y}&z={z}`, {subdomains: '0123', maxZoom: 22, maxNativeZoom: 20, attribution: 'Imagery © Google'});
+  const sat = g('s').addTo(map);
+  L.control.layers({'Google Satellite': sat, 'Google Hybrid': g('y'), 'Esri Imagery': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom: 22, maxNativeZoom: 19})}).addTo(map);
+  grp = L.featureGroup().addTo(map);
+}
+function setMode(m) {
+  MODE = m; [['mV', 'view'], ['mD', 'delete'], ['mC', 'connect']].forEach(([i, k]) => $(i).classList.toggle('on', k === m));
+  if (map) map.getContainer().style.cursor = m === 'view' ? '' : 'crosshair';
+}
+function ptClick(q) {
+  if (MODE === 'delete') { AUTO.delete(q.key); DEL.has(q.key) ? DEL.delete(q.key) : DEL.add(q.key); }
+  else if (MODE === 'connect') {
+    if (DEL.has(q.key) || MDONE) return;
+    if (MAN.length >= 3 && q.key === MAN[0]) { MDONE = true; $('useMan').checked = true; setMode('view'); }
+    else if (!MAN.includes(q.key)) MAN.push(q.key);
+  } else return;
+  edited();
+}
+function edited() { drawEditor(); markStale(); }
+function manUndo() { if (MDONE) { MDONE = false; $('useMan').checked = false; } else MAN.pop(); edited(); }
+function manClear() { MAN = []; MDONE = false; $('useMan').checked = false; edited(); }
+function nextNear() { if (!PAIRS.length) { alert('No near points within the tolerance.'); return; } NI = (NI + 1) % PAIRS.length; const [a, b] = PAIRS[NI]; map.fitBounds(L.latLngBounds([llq(a), llq(b)]).pad(1), {maxZoom: 21}); }
+
+function drawEditor() {
+  if (!map) return false; grp.clearLayers();
+  if (!compute()) { $('edmsg').textContent = 'Fewer than 3 points left in every part — restore some points.'; return false; }
+  G.pLL.forEach(p => L.polygon(p.r, {color: '#22d3ee', weight: 2, fillOpacity: .08, interactive: false}).bindTooltip(p.n, {permanent: true, direction: 'center', className: 'ptl'}).addTo(grp));
+  L.polygon(G.bLL, {color: '#fbbf24', weight: 3, fill: false, interactive: false}).addTo(grp);
+  if (MAN.length) { const r = MAN.map(k => PT.get(k)).filter(q => !DEL.has(q.key)).map(llq); L.polyline(MDONE ? r.concat([r[0]]) : r, {color: '#f97316', weight: 3, dashArray: '6 6', interactive: false}).addTo(grp); }
+  const ids = $('showId').checked;
+  for (const q of PT.values()) {
+    const del = DEL.has(q.key), mi = MAN.indexOf(q.key);
+    const m = L.circleMarker(llq(q), {radius: mi > -1 ? 8 : 6, color: del ? '#ef4444' : '#fff', weight: 2, fillColor: del ? '#ef4444' : mi > -1 ? '#f97316' : NEAR.has(q.key) ? '#facc15' : '#22d3ee', fillOpacity: del ? .25 : .95, dashArray: del ? '3 3' : null}).addTo(grp);
+    m.on('click', () => ptClick(q));
+    if (ids || mi > -1) m.bindTooltip((mi > -1 ? (mi + 1) + ' · ' : '') + q.id, {permanent: true, direction: 'top', offset: [0, -6], className: 'ptl'});
+  }
+  $('edmsg').innerHTML = `Deleted: <b>${DEL.size}</b> · near points flagged: <b>${NEAR.size}</b> (${PAIRS.length} pairs) · boundary: <b>${G.man ? 'manual (' + MAN.length + ' points)' : G.merged ? 'auto (union of parts)' : 'auto — parts not connected, convex hull used'}</b>${MAN.length && !MDONE ? ' · picking… click the 1st point again to finish' : ''}`;
+  return true;
+}
+
+let STALE = false;
+function markStale(v = true) { STALE = v; document.querySelectorAll('.dlb').forEach(b => b.disabled = v); $('stale').classList.toggle('hid', !v); }
+
+function regenerate(first) {
+  if (!drawEditor()) return;
+  const tot = parts.reduce((a, p) => a + p.area, 0);
+  let h = '<tr><th>#</th><th>Part code</th><th>Area (m²)</th><th>Area (Feddan)</th><th>F-Q-S</th></tr>';
+  parts.forEach((p, i) => h += `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.area.toFixed(2)}</td><td>${(p.area / FED).toFixed(5)}</td><td>${fqs(p.area)}</td></tr>`);
+  h += `<tr class="t"><td></td><td>TOTAL</td><td>${tot.toFixed(2)}</td><td>${(tot / FED).toFixed(5)}</td><td>${fqs(tot)}</td></tr>`;
+  $('tbl').innerHTML = h; $('scr').value = build(tot);
+  let m = `<div class="warn">${parts.length} parts drawn · ${exact} identical points dropped · ${DEL.size} points deleted manually · ${NEAR.size} near points still flagged.`;
+  if (SK.length) m += `<br>Skipped (fewer than 3 points): <b>${SK.join(', ')}</b>`;
+  if (BAD.length) m += `<br>⚠ Edges cross each other in: <b>${BAD.join(', ')}</b> — delete wrong points or tick the convex hull option.`;
+  if (!G.merged) m += '<br>⚠ Parts do not form one connected shape (convex hull used for the total boundary). Use <b>Pick points to connect</b> to define the boundary yourself.';
+  $('msg').innerHTML = m + `<br>Text height used: <b>${usedTH}</b></div>`;
+  $('stats').innerHTML = [[parts.length, 'Parts'], [tot.toFixed(2) + ' m²', 'Parts total'], [(tot / FED).toFixed(5), 'Feddan'], [G.bm.area.toFixed(2) + ' m²', 'Boundary area'],
+    [G.c[1].toFixed(6) + ', ' + G.c[0].toFixed(6), 'Centre (lat, lon)']].map(([v, l]) => `<div class="st"><b>${v}</b><span>${l}</span></div>`).join('');
+  drawLayout($('cv')); PV.fit = true; pvDraw(); markStale(false); renderSat();
+  if (first) setTimeout(() => { map.invalidateSize(); map.fitBounds(grp.getBounds().pad(.15), {maxZoom: 20}); }, 150);
+}
+['th', 'pts', 'dim', 'north'].forEach(i => $(i).addEventListener('change', () => markStale()));
+$('hull').addEventListener('change', () => { if (map && GR.size) edited(); });
+$('tol').addEventListener('change', () => { if (!map || !GR.size) return; if ($('autoNear').checked) { AUTO.forEach(k => DEL.delete(k)); AUTO.clear(); nearDel(); } edited(); });
+$('autoNear').addEventListener('change', () => { if (!map || !GR.size) return; if ($('autoNear').checked) nearDel(); else { AUTO.forEach(k => DEL.delete(k)); AUTO.clear(); } edited(); });
+
+// ASCII-safe LISP string: non-ASCII (e.g. Arabic) becomes \U+XXXX
+const esc = t => String(t).replace(/[\\"]/g, '').replace(/[^\x20-\x7e]/g, c => '\\\\U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'));
+
+function build(tot) {
+  const all = parts.flatMap(p => p.pts), mnx = Math.min(...all.map(q => q.x)), mxx = Math.max(...all.map(q => q.x)),
+    mny = Math.min(...all.map(q => q.y)), mxy = Math.max(...all.map(q => q.y)), raw = Math.max(mxx - mnx, mxy - mny) / 120,
+    nice = [.1, .15, .2, .25, .3, .4, .5, .6, .75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12.5, 15, 20, 25, 50],
+    th = parseFloat($('th').value) || nice.reduce((a, b) => Math.abs(b - raw) < Math.abs(a - raw) ? b : a),
+    f = n => n.toFixed(3), o = [];
+  window.usedTH = th;
+  const DV = ['DIMTXT', 'DIMASZ', 'DIMEXO', 'DIMEXE', 'DIMGAP', 'DIMTAD', 'DIMDEC', 'DIMSCALE', 'DIMTIH', 'DIMTOH'];
+  const T = (s, x, y, h, c) => o.push(`(gct "${esc(s)}" ${f(x)} ${f(y)} ${f(h)} ${c ? 'T' : 'nil'})`);
+  const L = (n, c) => ['_M', n, '_C', c, n];
+  o.push('(setvar "CMDECHO" 0)', '(setq gc_os (getvar "OSMODE") gc_ly (getvar "CLAYER") gc_cc (getvar "CECOLOR"))', '(setvar "OSMODE" 0)',
+    '(defun gct (s x y h c / p) (setq p (list x y 0.0)) (entmake (if c (list (cons 0 "TEXT") (cons 1 s) (cons 10 p) (cons 11 p) (cons 40 h) (cons 72 1) (cons 73 2)) (list (cons 0 "TEXT") (cons 1 s) (cons 10 p) (cons 40 h)))) (princ))',
+    '-LAYER', ...L('PARCEL_BOUNDARY', 7), ...L('PARCEL_POINTS', 7), ...L('PARCEL_LABELS', 7), ...L('PARCEL_DIMS', 7), ...L('NORTH_ARROW', 7), ...L('AREA_TABLE', 7), '',
+    `(setq gc_dv (mapcar 'getvar '(${DV.map(v => '"' + v + '"').join(' ')})))`,
+    `(setvar "DIMTXT" ${th})`, `(setvar "DIMASZ" ${f(th * .8)})`, `(setvar "DIMEXO" ${f(th * .3)})`, `(setvar "DIMEXE" ${f(th * .6)})`, `(setvar "DIMGAP" ${f(th * .3)})`,
+    '(setvar "DIMTAD" 1)', '(setvar "DIMDEC" 2)', '(setvar "DIMSCALE" 1)', '(setvar "DIMTIH" 0)', '(setvar "DIMTOH" 0)',
+    '(setvar "CECOLOR" "BYLAYER")', '(setvar "PDMODE" 35)', '(setvar "PDSIZE" 1.5)');
+
+  if ($('pts').checked) {
+    o.push('(setvar "CLAYER" "PARCEL_POINTS")'); const seen = new Set();
+    parts.forEach(p => p.pts.forEach(q => {
+      const k = f(q.x) + f(q.y); if (seen.has(k)) return; seen.add(k);
+      o.push(`_POINT ${f(q.x)},${f(q.y)},${f(q.z)}`); T(q.id, q.x + th * 0.4, q.y + th * 0.4, th * 0.8, false);
+    }));
+  }
+  o.push('(setvar "CLAYER" "PARCEL_BOUNDARY")');
+  parts.forEach(p => { o.push('_PLINE'); p.pts.forEach(q => o.push(`${f(q.x)},${f(q.y)}`)); o.push('C'); });
+
+  if ($('dim').checked) {
+    o.push('(setvar "CLAYER" "PARCEL_DIMS")'); const done = new Set();
+    parts.forEach(p => p.pts.forEach((a, i) => {
+      const b = p.pts[(i + 1) % p.pts.length], L = Math.hypot(b.x - a.x, b.y - a.y);
+      const k = [f(a.x) + f(a.y), f(b.x) + f(b.y)].sort().join('|');
+      if (L < 0.05 || done.has(k)) return; done.add(k);
+      const s = p.ccw ? 1 : -1, nx = s * (b.y - a.y) / L, ny = -s * (b.x - a.x) / L;   // outward normal
+      o.push('_DIMALIGNED', `${f(a.x)},${f(a.y)}`, `${f(b.x)},${f(b.y)}`, `${f((a.x + b.x) / 2 + nx * 2 * th)},${f((a.y + b.y) / 2 + ny * 2 * th)}`);
+    }));
+  }
+
+  o.push('(setvar "CLAYER" "PARCEL_LABELS")');
+  parts.forEach(p => {
+    if (nmOn()) T(p.name, p.lp.x, p.lp.y + th * 1.5, th * 1.3, true);
+    T(`${p.area.toFixed(2)} m2`, p.lp.x, p.lp.y, th, true);
+    T(`${(p.area / FED).toFixed(5)} Fed`, p.lp.x, p.lp.y - th * 1.5, th, true);
+  });
+
+  // area table (lines + text)
+  o.push('(setvar "CLAYER" "AREA_TABLE")');
+  const data = [['No.', 'Part code', 'Area (m2)', 'Area (Feddan)', 'F-Q-S']];
+  parts.forEach((p, i) => data.push([String(i + 1), p.name, p.area.toFixed(2), (p.area / FED).toFixed(5), fqs(p.area)]));
+  data.push(['', 'TOTAL', tot.toFixed(2), (tot / FED).toFixed(5), fqs(tot)]);
+  const w = data[0].map((_, c) => Math.max(...data.map(r => r[c].length)) * 0.9 * th + 2 * th), rh = 2.4 * th;
+  const x0 = Math.max(...parts.flatMap(p => p.pts.map(q => q.x))) + 10 * th, y0 = Math.max(...parts.flatMap(p => p.pts.map(q => q.y)));
+  const W = w.reduce((a, b) => a + b, 0), H = rh * data.length, xs = [x0];
+  w.forEach(v => xs.push(xs.at(-1) + v));
+  T('AREA STATEMENT', x0, y0 + th * 1.5, th * 1.5, false);
+  o.push('_RECTANG', `${f(x0)},${f(y0)}`, `${f(x0 + W)},${f(y0 - H)}`);
+  for (let r = 1; r < data.length; r++) o.push('_LINE', `${f(x0)},${f(y0 - r * rh)}`, `${f(x0 + W)},${f(y0 - r * rh)}`, '');
+  for (let c = 1; c < w.length; c++) o.push('_LINE', `${f(xs[c])},${f(y0)}`, `${f(xs[c])},${f(y0 - H)}`, '');
+  data.forEach((r, i) => r.forEach((t, c) => { if (t) T(t, (xs[c] + xs[c + 1]) / 2, y0 - (i + 0.5) * rh, th, true); }));
+
+  if ($('north').checked) {   // arrow height = 8 x text height, upper-left of the whole drawing
+    o.push('(setvar "CLAYER" "NORTH_ARROW")');
+    const S = 8 * th, bx = mnx - 10 * th, by = mxy - S, P = (x, y) => `${f(x)},${f(y)}`;
+    o.push('_PLINE', P(bx, by + S), P(bx - S * .25, by), P(bx, by + S * .25), P(bx + S * .25, by), 'C',
+      '_SOLID', P(bx, by + S), P(bx - S * .25, by), P(bx, by + S * .25), '', '');
+    T('N', bx, by + S + 1.5 * th, 1.5 * th, true);
+  }
+
+  o.push('(mapcar \'setvar \'(' + DV.map(v => '"' + v + '"').join(' ') + ') gc_dv)', '(setvar "CLAYER" gc_ly)', '(setvar "CECOLOR" gc_cc)', '(setvar "OSMODE" gc_os)', '(setvar "CMDECHO" 1)', '_ZOOM', '_E');
+  return o.join('\n') + '\n';
+}
+
+function dxf() {   // same drawing as the .scr script, written as an ASCII DXF (AC1009) with true dimensions
+  const th = window.usedTH, f = n => n.toFixed(3), o = [], tot = parts.reduce((a, p) => a + p.area, 0);
+  const E = t => String(t).replace(/\\/g, '').replace(/[^\x20-\x7e]/g, c => '\\U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'));
+  const BL = []; let nd = 0; const g = (c, v) => o.push(c, v), LY = ['PARCEL_BOUNDARY', 'PARCEL_POINTS', 'PARCEL_LABELS', 'PARCEL_DIMS', 'NORTH_ARROW', 'AREA_TABLE'];
+  const TXT = (s, x, y, h, l, ctr, rot) => { g(0, 'TEXT'); g(8, l); g(10, f(x)); g(20, f(y)); g(30, 0); g(40, f(h)); g(1, E(s)); if (rot) g(50, rot.toFixed(3)); if (ctr) { g(72, 1); g(11, f(x)); g(21, f(y)); g(31, 0); g(73, 2); } };
+  const LINE = (a, b, c, d, l) => { g(0, 'LINE'); g(8, l); g(10, f(a)); g(20, f(b)); g(30, 0); g(11, f(c)); g(21, f(d)); g(31, 0); };
+  const PL = (pts, l) => { g(0, 'POLYLINE'); g(8, l); g(66, 1); g(70, 1); pts.forEach(([x, y]) => { g(0, 'VERTEX'); g(8, l); g(10, f(x)); g(20, f(y)); g(30, 0); }); g(0, 'SEQEND'); g(8, l); };
+  if ($('pts').checked) { const seen = new Set(); parts.forEach(p => p.pts.forEach(q => { const k = f(q.x) + f(q.y); if (seen.has(k)) return; seen.add(k); g(0, 'POINT'); g(8, 'PARCEL_POINTS'); g(10, f(q.x)); g(20, f(q.y)); g(30, f(q.z)); TXT(q.id, q.x + th * .4, q.y + th * .4, th * .8, 'PARCEL_POINTS'); })); }
+  parts.forEach(p => PL(p.pts.map(q => [q.x, q.y]), 'PARCEL_BOUNDARY'));
+  if ($('dim').checked) {   // real aligned DIMENSION entities (+ their geometry blocks)
+    const done = new Set(), asz = .8 * th;
+    parts.forEach(p => p.pts.forEach((a, i) => {
+      const b = p.pts[(i + 1) % p.pts.length], L = Math.hypot(b.x - a.x, b.y - a.y), k = [f(a.x) + f(a.y), f(b.x) + f(b.y)].sort().join('|');
+      if (L < .05 || done.has(k)) return; done.add(k);
+      const sg = p.ccw ? 1 : -1, nx = sg * (b.y - a.y) / L, ny = -sg * (b.x - a.x) / L, ux = (b.x - a.x) / L, uy = (b.y - a.y) / L, off = 2 * th;
+      const A = [a.x + nx * off, a.y + ny * off], B = [b.x + nx * off, b.y + ny * off], nm = '*D' + (++nd), s0 = o.length;
+      LINE(a.x + nx * .3 * th, a.y + ny * .3 * th, A[0] + nx * .6 * th, A[1] + ny * .6 * th, 'PARCEL_DIMS');
+      LINE(b.x + nx * .3 * th, b.y + ny * .3 * th, B[0] + nx * .6 * th, B[1] + ny * .6 * th, 'PARCEL_DIMS');
+      LINE(A[0], A[1], B[0], B[1], 'PARCEL_DIMS');
+      [[A, 1], [B, -1]].forEach(([T, d]) => { const cx = T[0] + ux * d * asz, cy = T[1] + uy * d * asz, w = asz / 6, v = [[T[0], T[1]], [cx + nx * w, cy + ny * w], [cx - nx * w, cy - ny * w], [cx - nx * w, cy - ny * w]];
+        g(0, 'SOLID'); g(8, 'PARCEL_DIMS'); v.forEach(([x, y], q) => { g(10 + q, f(x)); g(20 + q, f(y)); g(30 + q, 0); }); });
+      let r = Math.atan2(b.y - a.y, b.x - a.x); if (r > Math.PI / 2 || r <= -Math.PI / 2) r += Math.PI;
+      const tx = (A[0] + B[0]) / 2 - Math.sin(r) * (.3 * th + th / 2), ty = (A[1] + B[1]) / 2 + Math.cos(r) * (.3 * th + th / 2);
+      TXT(L.toFixed(2), tx, ty, th, 'PARCEL_DIMS', true, r * 180 / Math.PI);
+      const blk = o.splice(s0);
+      BL.push(0, 'BLOCK', 8, 'PARCEL_DIMS', 2, nm, 70, 1, 10, 0, 20, 0, 30, 0, 3, nm, ...blk, 0, 'ENDBLK', 8, 'PARCEL_DIMS');
+      g(0, 'DIMENSION'); g(8, 'PARCEL_DIMS'); g(2, nm); g(10, f(B[0])); g(20, f(B[1])); g(30, 0); g(11, f(tx)); g(21, f(ty)); g(31, 0); g(70, 1); g(3, 'STANDARD');
+      g(13, f(a.x)); g(23, f(a.y)); g(33, 0); g(14, f(b.x)); g(24, f(b.y)); g(34, 0);
+    }));
+  }
+  parts.forEach(p => { if (nmOn()) TXT(p.name, p.lp.x, p.lp.y + th * 1.5, th * 1.3, 'PARCEL_LABELS', true); TXT(`${p.area.toFixed(2)} m2`, p.lp.x, p.lp.y, th, 'PARCEL_LABELS', true); TXT(`${(p.area / FED).toFixed(5)} Fed`, p.lp.x, p.lp.y - th * 1.5, th, 'PARCEL_LABELS', true); });
+  const data = [['No.', 'Part code', 'Area (m2)', 'Area (Feddan)', 'F-Q-S']];
+  parts.forEach((p, i) => data.push([String(i + 1), p.name, p.area.toFixed(2), (p.area / FED).toFixed(5), fqs(p.area)]));
+  data.push(['', 'TOTAL', tot.toFixed(2), (tot / FED).toFixed(5), fqs(tot)]);
+  const w = data[0].map((_, c) => Math.max(...data.map(r => r[c].length)) * .9 * th + 2 * th), rh = 2.4 * th, all = parts.flatMap(p => p.pts);
+  const x0 = Math.max(...all.map(q => q.x)) + 10 * th, y0 = Math.max(...all.map(q => q.y)), W = w.reduce((a, b) => a + b, 0), H = rh * data.length, xs = [x0];
+  w.forEach(v => xs.push(xs.at(-1) + v));
+  TXT('AREA STATEMENT', x0, y0 + th * 1.5, th * 1.5, 'AREA_TABLE');
+  PL([[x0, y0], [x0 + W, y0], [x0 + W, y0 - H], [x0, y0 - H]], 'AREA_TABLE');
+  for (let r = 1; r < data.length; r++) LINE(x0, y0 - r * rh, x0 + W, y0 - r * rh, 'AREA_TABLE');
+  for (let c = 1; c < w.length; c++) LINE(xs[c], y0, xs[c], y0 - H, 'AREA_TABLE');
+  data.forEach((r, i) => r.forEach((t, c) => { if (t) TXT(t, (xs[c] + xs[c + 1]) / 2, y0 - (i + .5) * rh, th, 'AREA_TABLE', true); }));
+  if ($('north').checked) { const S = 8 * th, bx = Math.min(...all.map(q => q.x)) - 10 * th, by = Math.max(...all.map(q => q.y)) - S;
+    PL([[bx, by + S], [bx - S * .25, by], [bx, by + S * .25], [bx + S * .25, by]], 'NORTH_ARROW'); TXT('N', bx, by + S + 1.5 * th, 1.5 * th, 'NORTH_ARROW', true); }
+  const hd = [0, 'SECTION', 2, 'HEADER', 9, '$ACADVER', 1, 'AC1009', 9, '$PDMODE', 70, 35, 9, '$PDSIZE', 40, 1.5, 9, '$DIMTXT', 40, f(th), 9, '$DIMASZ', 40, f(th * .8), 9, '$DIMEXO', 40, f(th * .3), 9, '$DIMEXE', 40, f(th * .6), 9, '$DIMGAP', 40, f(th * .3), 9, '$DIMTAD', 70, 1, 9, '$DIMDEC', 70, 2, 9, '$DIMSCALE', 40, 1, 9, '$DIMTIH', 70, 0, 9, '$DIMTOH', 70, 0, 0, 'ENDSEC', 0, 'SECTION', 2, 'TABLES',
+    0, 'TABLE', 2, 'LTYPE', 70, 1, 0, 'LTYPE', 2, 'CONTINUOUS', 70, 0, 3, 'Solid line', 72, 65, 73, 0, 40, 0, 0, 'ENDTAB',
+    0, 'TABLE', 2, 'LAYER', 70, LY.length, ...LY.flatMap(n => [0, 'LAYER', 2, n, 70, 0, 62, 7, 6, 'CONTINUOUS']), 0, 'ENDTAB',
+    0, 'TABLE', 2, 'STYLE', 70, 1, 0, 'STYLE', 2, 'STANDARD', 70, 0, 40, 0, 41, 1, 50, 0, 71, 0, 42, th, 3, 'arial.ttf', 4, '', 0, 'ENDTAB', 0, 'ENDSEC', 0, 'SECTION', 2, 'BLOCKS', ...BL, 0, 'ENDSEC', 0, 'SECTION', 2, 'ENTITIES'];
+  save('parcels_polylines_area_table.dxf', new Blob([[...hd, ...o, 0, 'ENDSEC', 0, 'EOF'].join('\n') + '\n'], {type: 'application/dxf'}));
+}
+function cp() { $('scr').select(); navigator.clipboard.writeText($('scr').value); alert('Script copied.'); }
+function dl() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([$('scr').value], {type: 'text/plain'}));
+  a.download = 'parcels_polylines_area_table.scr'; a.click();
+}
+
+// ======================= GIS / KML / SHAPEFILE / PREVIEWS =======================
+proj4.defs('U36', '+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs');
+const toLL = (x, y) => proj4('U36', 'EPSG:4326', [x, y]);   // -> [lon, lat]
+const PRJ = 'PROJCS["WGS_1984_UTM_Zone_36N",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",33.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]';
+let G = null, map = null, grp = null;
+const save = (name, blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); };
+
+function arrow(c, x, y, s, col) {
+  c.strokeStyle = c.fillStyle = col; c.lineWidth = Math.max(1.5, s / 25);
+  c.beginPath(); c.moveTo(x, y - s); c.lineTo(x - s * .25, y); c.lineTo(x, y - s * .25); c.lineTo(x + s * .25, y); c.closePath(); c.stroke();
+  c.beginPath(); c.moveTo(x, y - s); c.lineTo(x - s * .25, y); c.lineTo(x, y - s * .25); c.closePath(); c.fill();
+  c.font = `bold ${s * .32}px Arial`; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText('N', x, y - s - s * .08);
+}
+
+const nmOn = () => $('pnm').checked;
+function paint(cv, W, H, o, view) {   // shared renderer: site layout card + CAD preview (+ exports)
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), fg = o.dark ? '#e5e7eb' : '#000', bg = o.dark ? '#0b0f17' : '#fff', dc = o.dark ? '#4ade80' : '#0e7490', k = o.k;
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  const all = parts.flatMap(p => p.pts), mnx = Math.min(...all.map(q => q.x)), mxx = Math.max(...all.map(q => q.x)), mny = Math.min(...all.map(q => q.y)), mxy = Math.max(...all.map(q => q.y));
+  if (!view) { const sc = Math.min((W - 2 * o.m) / ((mxx - mnx) || 1), (H - 2 * o.m) / ((mxy - mny) || 1)); view = {s: sc, ox: (W - (mxx - mnx) * sc) / 2, oy: H - (H - (mxy - mny) * sc) / 2}; }
+  const s = view.s, X = x => view.ox + (x - mnx) * s, Y = y => view.oy - (y - mny) * s;
+  c.strokeStyle = c.fillStyle = fg; c.lineWidth = o.lw; c.lineJoin = 'round';
+  parts.forEach(p => { c.beginPath(); p.pts.forEach((q, i) => i ? c.lineTo(X(q.x), Y(q.y)) : c.moveTo(X(q.x), Y(q.y))); c.closePath(); c.stroke(); });
+
+  if (o.dims) {   // aligned dimensions: extension lines, dimension line, arrows, rotated length text
+    const done = new Set(); c.strokeStyle = c.fillStyle = dc; c.lineWidth = Math.max(1, o.lw * .5); c.font = `${o.df}px Arial`; c.textAlign = 'center';
+    parts.forEach(p => p.pts.forEach((a, i) => {
+      const b = p.pts[(i + 1) % p.pts.length], L = Math.hypot(b.x - a.x, b.y - a.y);
+      const key = [a.x + ',' + a.y, b.x + ',' + b.y].sort().join('|'); if (L < .05 || done.has(key)) return;
+      const txt = L.toFixed(2), pl = L * s; if (pl < c.measureText(txt).width + 12 * k) return; done.add(key);   // too short on screen: appears when zoomed in
+      const sg = p.ccw ? 1 : -1, nx = sg * (b.y - a.y) / L, ny = sg * (b.x - a.x) / L;   // outward normal in screen space (y flipped)
+      const A = [X(a.x), Y(a.y)], B = [X(b.x), Y(b.y)], ux = (B[0] - A[0]) / pl, uy = (B[1] - A[1]) / pl, px = -uy, py = ux;
+      const A2 = [A[0] + nx * o.off, A[1] + ny * o.off], B2 = [B[0] + nx * o.off, B[1] + ny * o.off], g = 3 * k, e = 5 * k, ar = Math.max(9 * k, o.df * .7);
+      c.beginPath(); [[A, A2], [B, B2]].forEach(([P, Q]) => { c.moveTo(P[0] + nx * g, P[1] + ny * g); c.lineTo(Q[0] + nx * e, Q[1] + ny * e); }); c.moveTo(A2[0], A2[1]); c.lineTo(B2[0], B2[1]); c.stroke();
+      [[A2, 1], [B2, -1]].forEach(([T, d]) => { c.beginPath(); c.moveTo(T[0], T[1]); c.lineTo(T[0] + ux * d * ar + px * ar / 3, T[1] + uy * d * ar + py * ar / 3); c.lineTo(T[0] + ux * d * ar - px * ar / 3, T[1] + uy * d * ar - py * ar / 3); c.closePath(); c.fill(); });
+      let ang = Math.atan2(uy, ux); if (ang > Math.PI / 2 || ang <= -Math.PI / 2) ang += Math.PI;
+      const up = [Math.sin(ang), -Math.cos(ang)], out = up[0] * nx + up[1] * ny > 0;   // keep the text on the outer side of the line
+      c.save(); c.translate((A2[0] + B2[0]) / 2, (A2[1] + B2[1]) / 2); c.rotate(ang); c.textBaseline = out ? 'bottom' : 'top'; c.fillText(txt, 0, out ? -3 * k : 3 * k); c.restore();
+    }));
+    c.strokeStyle = c.fillStyle = fg; c.lineWidth = o.lw;
+  }
+
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  parts.forEach(p => {
+    const x = X(p.lp.x), y = Y(p.lp.y);
+    if (o.names) { c.font = `bold ${o.nf}px Arial`; c.fillText(p.name, x, y); }
+    if (o.areas) { c.font = `${o.af}px Arial`; c.fillText(p.area.toFixed(2) + ' m²', x, y + (o.names ? o.nf * 1.1 : 0)); }
+  });
+  if (o.pts) {
+    c.font = `${o.idf}px Arial`; c.textAlign = 'left'; c.textBaseline = 'bottom'; const seen = new Set();
+    parts.forEach(p => p.pts.forEach(q => {
+      const kk = q.x + ',' + q.y; if (seen.has(kk)) return; seen.add(kk);
+      c.beginPath(); c.arc(X(q.x), Y(q.y), o.dot, 0, 7); c.fill(); c.fillText(q.id, X(q.x) + 8 * k, Y(q.y) - 6 * k);
+    }));
+  }
+  if (o.north) arrow(c, o.arrow[0], o.arrow[1], o.arrow[2], fg);
+  if (o.scale) {   // scale bar
+    const d = [.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find(v => v * s >= 110 * k) || 5000, bl = d * s, x0 = 24 * k, y0 = H - 34 * k;
+    c.strokeStyle = c.fillStyle = fg; c.lineWidth = 2 * k; c.beginPath(); c.moveTo(x0, y0 - 6 * k); c.lineTo(x0, y0); c.lineTo(x0 + bl, y0); c.lineTo(x0 + bl, y0 - 6 * k); c.stroke();
+    c.font = `${12 * k}px Arial`; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.fillText(d + ' m', x0 + bl / 2, y0 - 6 * k);
+    c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillText('UTM WGS84 zone 36N · dimensions in m', W - 14 * k, H - 12 * k);
+  }
+  return view;
+}
+
+function drawLayout(cv) {   // black-only site layout: polylines, points, point names (optional), north arrow
+  paint(cv, 1400, 1000, {names: nmOn(), dims: false, pts: true, areas: false, north: true, dark: false, k: 1, m: 130, lw: 2.5, dot: 4.5, nf: 28, idf: 17, af: 20, df: 16, off: 0, arrow: [80, 130, 80]}, null);
+}
+
+// ---- CAD preview tab (interactive: wheel = zoom, drag = pan) ----
+const PV = {v: null, fit: true, d: 1};
+const pvOpts = d => ({names: nmOn(), dims: $('dim').checked, pts: $('pts').checked, areas: $('pvArea').checked, north: $('north').checked, dark: $('pvDark').checked, k: d,
+  m: ($('dim').checked ? (+$('pvDf').value * 1.7 + 70) : 60) * d, lw: 1.8 * d, dot: 3.5 * d, nf: 15 * d, idf: 11 * d, af: 12 * d, df: +$('pvDf').value * d, off: (+$('pvDf').value * 1.5 + 8) * d, scale: true, arrow: [46 * d, 100 * d, 60 * d]});
+function pvDraw() {
+  if (!G || !parts.length || $('tPrev').classList.contains('hid')) return;
+  const cv = $('pv'), d = window.devicePixelRatio || 1, W = Math.round(cv.clientWidth * d), H = Math.round(cv.clientHeight * d); if (!W || !H) return;
+  PV.d = d; cv.style.background = $('pvDark').checked ? '#0b0f17' : '#fff';
+  PV.v = paint(cv, W, H, pvOpts(d), PV.fit ? null : PV.v);
+}
+function pvZoom(f, mx, my) {
+  if (!PV.v) return; const cv = $('pv'); if (mx === undefined) { mx = cv.width / 2; my = cv.height / 2; }
+  PV.v.ox = mx - (mx - PV.v.ox) * f; PV.v.oy = my - (my - PV.v.oy) * f; PV.v.s *= f; PV.fit = false; pvDraw();
+}
+function pvSave(t) { const cv = document.createElement('canvas'); paint(cv, 2400, 1700, pvOpts(2), null); cv.toBlob(b => save('cad_preview.' + t, b), t === 'jpg' ? 'image/jpeg' : 'image/png', .95); }
+function showTab(t) {
+  $('tMain').classList.toggle('hid', t !== 'A'); $('tPrev').classList.toggle('hid', t !== 'B');
+  $('tabA').classList.toggle('on', t === 'A'); $('tabB').classList.toggle('on', t === 'B');
+  if (t === 'B') { PV.fit = true; requestAnimationFrame(pvDraw); } else if (map) setTimeout(() => map.invalidateSize(), 50);
+}
+(() => {
+  const cv = $('pv'); let drag = null;
+  cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); pvZoom(Math.exp(-e.deltaY * .0015), (e.clientX - r.left) * PV.d, (e.clientY - r.top) * PV.d); }, {passive: false});
+  cv.addEventListener('pointerdown', e => { if (!PV.v) return; drag = {x: e.clientX, y: e.clientY}; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!drag || !PV.v) return; PV.v.ox += (e.clientX - drag.x) * PV.d; PV.v.oy += (e.clientY - drag.y) * PV.d; drag = {x: e.clientX, y: e.clientY}; PV.fit = false; pvDraw(); });
+  ['pointerup', 'pointercancel'].forEach(n => cv.addEventListener(n, () => drag = null));
+  cv.addEventListener('dblclick', () => { PV.fit = true; pvDraw(); });
+  window.addEventListener('resize', pvDraw);
+  $('pvDf').addEventListener('input', () => { $('pvDfv').textContent = $('pvDf').value; pvDraw(); }); $('pvArea').addEventListener('change', pvDraw); $('pvDark').addEventListener('change', pvDraw);
+  // part-name switches (settings, layout card, preview) stay in step; CAD script text follows
+  document.querySelectorAll('.nmc').forEach(el => el.addEventListener('change', () => {
+    document.querySelectorAll('.nmc').forEach(o => o.checked = el.checked);
+    if (!G || !parts.length) return; drawLayout($('cv')); pvDraw(); $('scr').value = build(parts.reduce((a, p) => a + p.area, 0));
+  }));
+  // preview switches mirror the CAD export settings
+  [['pvDim', 'dim'], ['pvPts', 'pts'], ['pvNorth', 'north']].forEach(([p, s]) => {
+    $(p).addEventListener('change', () => { $(s).checked = $(p).checked; if (!G || !parts.length) return; pvDraw(); $('scr').value = build(parts.reduce((a, q) => a + q.area, 0)); });
+    $(s).addEventListener('change', () => { $(p).checked = $(s).checked; pvDraw(); });
+  });
+})();
+function lay(t) { $('cv').toBlob(b => save('site layout' + (nmOn() ? '' : ' (no part names)') + '.' + t, b), t === 'jpg' ? 'image/jpeg' : 'image/png', .95); }
+
+const loadTile = urls => new Promise(res => { let i = 0; const nx = () => { if (i >= urls.length) return res(null); const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res({im, src: i}); im.onerror = () => { i++; nx(); }; im.src = urls[i]; }; nx(); });
+async function renderSat() {
+  const tok = ++SATTOK, W = 800, H = 600, cv = $('sat'); cv.width = W; cv.height = H; $('satMsg').textContent = 'Rendering…';
+  document.querySelectorAll('.sb').forEach(b => b.disabled = true);
+  const all = [...G.bLL, ...G.pLL.flatMap(p => p.r)];
+  const WP = (la, lo, z) => { const s = 256 * 2 ** z, sn = Math.sin(la * Math.PI / 180); return [(lo + 180) / 360 * s, (.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)) * s]; };
+  const ext = z => { const p = all.map(([la, lo]) => WP(la, lo, z)), xs = p.map(q => q[0]), ys = p.map(q => q[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };
+  let z = parseInt($('zm').value) || 0;
+  if (!z) for (z = 20; z > 1; z--) { const e = ext(z); if (e[2] - e[0] <= W * .8 && e[3] - e[1] <= H * .8) break; }   // largest zoom that fits with 10% margin
+  const e = ext(z), left = Math.round((e[0] + e[2]) / 2 - W / 2), top = Math.round((e[1] + e[3]) / 2 - H / 2), n = 2 ** z;
+  const c = cv.getContext('2d'); c.fillStyle = '#222'; c.fillRect(0, 0, W, H);
+  let fb = 0, miss = 0; const jobs = [];
+  for (let tx = Math.floor(left / 256); tx <= Math.floor((left + W - 1) / 256); tx++) for (let ty = Math.floor(top / 256); ty <= Math.floor((top + H - 1) / 256); ty++) {
+    const X = ((tx % n) + n) % n; if (ty < 0 || ty >= n) continue;
+    jobs.push(loadTile([`https://mt${(X + ty) & 3}.google.com/vt/lyrs=s&x=${X}&y=${ty}&z=${z}`, `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${X}`])
+      .then(r => { if (!r) { miss++; return; } if (r.src) fb++; c.drawImage(r.im, tx * 256 - left, ty * 256 - top); }));
+  }
+  await Promise.all(jobs); if (tok !== SATTOK) return;
+  const P = ([la, lo]) => { const q = WP(la, lo, z); return [q[0] - left, q[1] - top]; };
+  const poly = (r, col, w) => { c.beginPath(); r.map(P).forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.strokeStyle = col; c.lineWidth = w; c.stroke(); };
+  const txt = (t, x, y, f, al) => { c.font = f; c.textAlign = al || 'center'; c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(t, x, y); c.fillStyle = '#fff'; c.fillText(t, x, y); };
+  G.pLL.forEach(p => { poly(p.r, '#22d3ee', 2); const [x, y] = P(p.lp); txt(p.n, x, y, 'bold 14px Arial'); });
+  poly(G.bLL, '#fbbf24', 3.5);
+  G.pLL.forEach((p, i) => p.r.forEach((r, j) => { const [x, y] = P(r); c.beginPath(); c.arc(x, y, 3, 0, 7); c.fillStyle = '#fff'; c.fill(); if ($('satId').checked) txt(parts[i].pts[j].id, x + 5, y - 5, '11px Arial', 'left'); }));
+  const mpp = 156543.03392 * Math.cos(G.c[1] * Math.PI / 180) / n;   // metres per pixel
+  const d = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find(v => v / mpp >= 90) || 5000, bl = d / mpp;
+  c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 1; c.fillRect(14, H - 30, bl, 6); c.strokeRect(14, H - 30, bl, 6); txt(d + ' m', 14 + bl / 2, H - 36, 'bold 12px Arial');
+  c.shadowColor = '#000'; c.shadowBlur = 5; arrow(c, 45, 95, 60, '#fff'); c.shadowBlur = 0;
+  txt(fb ? 'Imagery © Google / Esri' : 'Imagery © Google', W - 6, H - 6, '11px Arial', 'right');
+  $('satMsg').textContent = `Zoom ${z} · 800×600 px · ≈${mpp.toFixed(2)} m/pixel` + (fb ? ` · ⚠ browser blocked Google tiles for ${fb} tiles, Esri used for them` : '') + (miss ? ` · ⚠ ${miss} tiles failed to load (check the connection)` : '');
+  if (!STALE) document.querySelectorAll('.sb').forEach(b => b.disabled = false);
+}
+function satSave(t) { try { $('sat').toBlob(b => save('satellite_800x600.' + t, b), t === 'jpg' ? 'image/jpeg' : 'image/png', .95); } catch (e) { alert('The browser blocked saving the tiles (CORS). Use a screenshot instead.'); } }
+
+function kml() {
+  const ring = G.bLL.concat([G.bLL[0]]).map(([la, lo]) => `${lo.toFixed(8)},${la.toFixed(8)},0`).join(' ');
+  const nm = `${G.c[1].toFixed(6)}, ${G.c[0].toFixed(6)}`;
+  save('boundary.kml', new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Boundary</name>
+<Style id="b"><LineStyle><color>ff00ffff</color><width>3</width></LineStyle><PolyStyle><color>3300ffff</color></PolyStyle></Style>
+<Placemark><name>Boundary</name><styleUrl>#b</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>${ring}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+<Placemark><name>${nm}</name><Point><coordinates>${G.c[0].toFixed(6)},${G.c[1].toFixed(6)},0</coordinates></Point></Placemark></Document></kml>`], {type: 'application/vnd.google-earth.kml+xml'}));
+}
+
+// ---- minimal shapefile writer (type 1 = point, 5 = polygon) ----
+const enc = new TextEncoder();
+function shapefile(type, geoms, fields, rows) {
+  const recs = geoms.map(g => {
+    if (type === 1) { const b = new DataView(new ArrayBuffer(20)); b.setInt32(0, 1, true); b.setFloat64(4, g[0], true); b.setFloat64(12, g[1], true); return b; }
+    const pts = g.flat(), n = pts.length, xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), b = new DataView(new ArrayBuffer(44 + 4 * g.length + 16 * n));
+    b.setInt32(0, 5, true); [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].forEach((v, i) => b.setFloat64(4 + 8 * i, v, true));
+    b.setInt32(36, g.length, true); b.setInt32(40, n, true); let off = 0;
+    g.forEach((r, i) => { b.setInt32(44 + 4 * i, off, true); off += r.length; });
+    pts.forEach((q, i) => { b.setFloat64(44 + 4 * g.length + 16 * i, q[0], true); b.setFloat64(52 + 4 * g.length + 16 * i, q[1], true); }); return b;
+  });
+  const pp = geoms.flatMap(g => type === 1 ? [g] : g.flat()), bx = [Math.min(...pp.map(q => q[0])), Math.min(...pp.map(q => q[1])), Math.max(...pp.map(q => q[0])), Math.max(...pp.map(q => q[1]))];
+  const mk = len => { const a = new Uint8Array(len), d = new DataView(a.buffer); d.setInt32(0, 9994); d.setInt32(24, len / 2); d.setInt32(28, 1000, true); d.setInt32(32, type, true); bx.forEach((v, i) => d.setFloat64(36 + 8 * i, v, true)); return a; };
+  const shp = mk(100 + recs.reduce((a, r) => a + 8 + r.byteLength, 0)), shx = mk(100 + 8 * recs.length); let off = 100;
+  recs.forEach((r, i) => {
+    const h = new DataView(shp.buffer, off, 8); h.setInt32(0, i + 1); h.setInt32(4, r.byteLength / 2); shp.set(new Uint8Array(r.buffer), off + 8);
+    const x = new DataView(shx.buffer, 100 + 8 * i, 8); x.setInt32(0, off / 2); x.setInt32(4, r.byteLength / 2); off += 8 + r.byteLength;
+  });
+  const rl = 1 + fields.reduce((a, f) => a + f.l, 0), hl = 33 + 32 * fields.length, dbf = new Uint8Array(hl + rl * rows.length + 1), dv = new DataView(dbf.buffer), d = new Date();
+  dbf[0] = 3; dbf[1] = d.getFullYear() - 1900; dbf[2] = d.getMonth() + 1; dbf[3] = d.getDate(); dv.setUint32(4, rows.length, true); dv.setUint16(8, hl, true); dv.setUint16(10, rl, true);
+  fields.forEach((f, i) => { dbf.set(enc.encode(f.n).slice(0, 10), 32 + 32 * i); dbf[43 + 32 * i] = f.t.charCodeAt(0); dbf[48 + 32 * i] = f.l; dbf[49 + 32 * i] = f.d || 0; });
+  dbf[32 + 32 * fields.length] = 13;
+  rows.forEach((r, j) => { let o = hl + rl * j; dbf[o++] = 32; fields.forEach((f, i) => {
+    const b = enc.encode(f.t === 'N' ? (+r[i]).toFixed(f.d || 0).padStart(f.l) : String(r[i])).slice(0, f.l); dbf.fill(32, o, o + f.l); dbf.set(b, o); o += f.l; }); });
+  dbf[dbf.length - 1] = 26;
+  return {shp, shx, dbf};
+}
+const cw = r => { r = r.slice(); if (r[0][0] !== r.at(-1)[0] || r[0][1] !== r.at(-1)[1]) r.push(r[0]);
+  let a = 0; for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]; return a > 0 ? r.reverse() : r; };   // outer rings clockwise
+const ringArea = r => Math.abs(measure(r.map(([x, y]) => ({x, y}))).area);
+
+async function zipShp(which) {
+  const z = new JSZip(), add = (n, o) => { z.file(n + '.shp', o.shp); z.file(n + '.shx', o.shx); z.file(n + '.dbf', o.dbf); z.file(n + '.prj', PRJ); z.file(n + '.cpg', 'UTF-8'); };
+  const polyF = [{n: 'Name', t: 'C', l: 40}, {n: 'Type', t: 'C', l: 10}, {n: 'Area_m2', t: 'N', l: 18, d: 3}, {n: 'Area_Fed', t: 'N', l: 14, d: 5}];
+  const bRow = ['Total boundary', 'Boundary', G.bm.area, G.bm.area / FED];
+  if (which === 'rasm') { add('export rasm elkhareta', shapefile(5, [[cw(G.b)]], polyF, [bRow])); save('export rasm elkhareta.zip', await z.generateAsync({type: 'blob'})); return; }
+  const seen = new Set(), pr = [];
+  parts.forEach(p => p.pts.forEach(q => { const k = q.x + ',' + q.y; if (!seen.has(k)) { seen.add(k); pr.push(q.id ? [q.id, q.x, q.y, p.name] : ['', q.x, q.y, p.name]); } }));
+  add('coordinates', shapefile(1, pr.map(r => [r[1], r[2]]), [{n: 'Point_ID', t: 'C', l: 20}, {n: 'X_UTM36N', t: 'N', l: 18, d: 3}, {n: 'Y_UTM36N', t: 'N', l: 18, d: 3}, {n: 'Part', t: 'C', l: 40}], pr));
+  add('building_or_land', shapefile(5, parts.map(p => [cw(p.pts.map(q => [q.x, q.y]))]).concat([[cw(G.b)]]), polyF,
+    parts.map(p => [p.name, 'Part', p.area, p.area / FED]).concat([bRow])));
+  save('shapefile_coordinates_building_or_land.zip', await z.generateAsync({type: 'blob'}));
+}
+
+// ======================= COORDINATES TABLE TAB =======================
+function showTop(t) {
+  [['S', 'pStudio'], ['C', 'pCoord'], ['A', 'pCad']].forEach(([k, id]) => { $(id).classList.toggle('hid', k !== t); $('top' + k).classList.toggle('on', k === t); });
+  if (t === 'S' && map) setTimeout(() => { map.invalidateSize(); pvDraw(); }, 60);
+  if (t === 'A' && window.acRefresh) acRefresh();
+}
+(() => {
+  const HEAD = ['ID', 'Easting (Meter)', 'Northing (Meter)', 'Elevation (Meter)', 'Feature Code'];
+  let CR = [[1, 300082.385, 3357311.443, 41.552, 'st.1'], [2, 300089.999, 3357314.523, 41.405, 'st.1'], [3, 300085.898, 3357322.796, 41.447, 'st.1'], [4, 300078.665, 3357319.850, 41.593, 'st.1']];
+  let srcName = 'A-Q17-1708-01-00000222806', pending = null;
+  const say = (t, c) => { $('ctmsg').textContent = t; $('ctmsg').className = c || ''; };
+  const fmt = v => v === null || v === undefined || v === '' ? '' : Number(v).toFixed(3);
+  const num = v => { if (typeof v === 'number') return isFinite(v) ? v : null; if (v === null || v === undefined) return null; const s = String(v).trim().replace(/,/g, ''); if (s === '') return null; const n = Number(s); return isFinite(n) ? n : null; };
+  const r3 = x => x === null ? null : Math.round(x * 1000) / 1000;
+  const findCol = (row, re) => { for (let i = 0; i < row.length; i++) if (row[i] !== null && row[i] !== undefined && re.test(String(row[i]).trim())) return i; return -1; };
+  const cellAfter = (row, re) => { const i = findCol(row, re); if (i < 0) return ''; for (let j = i + 1; j < row.length; j++) if (row[j] !== null && row[j] !== undefined && String(row[j]).trim() !== '') return String(row[j]).trim(); return ''; };
+  function render() {
+    const tb = $('ctt').querySelector('tbody'); tb.textContent = '';
+    CR.forEach(r => { const tr = document.createElement('tr'); [r[0], fmt(r[1]), fmt(r[2]), fmt(r[3]), r[4]].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }); tb.appendChild(tr); });
+    $('ctcount').textContent = 'عدد النقاط: ' + CR.length;
+  }
+  render();
+  function extract(wb) {
+    for (const name of wb.SheetNames) {
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], {header: 1, raw: true, defval: null, blankrows: false});
+      for (let h = 0; h < aoa.length; h++) {
+        const hdr = aoa[h], e = findCol(hdr, /east|^x$/i), n = findCol(hdr, /north|^y$/i);
+        if (e < 0 || n < 0 || e === n) continue;
+        const id = findCol(hdr, /^(id|name|point|point id|point name|pt|no\.?|#)$/i), z = findCol(hdr, /elev|height|^z$|^h$/i), code = findCol(hdr, /code|feature|desc/i), out = [];
+        for (let k = h + 1; k < aoa.length; k++) {
+          const row = aoa[k], E = num(row[e]), N = num(row[n]); if (E === null || N === null) break;
+          out.push([id >= 0 && row[id] !== null && row[id] !== undefined ? (num(row[id]) !== null ? num(row[id]) : String(row[id])) : out.length + 1, r3(E), r3(N), z >= 0 ? r3(num(row[z])) : null, code >= 0 && row[code] !== null && row[code] !== undefined ? String(row[code]) : '']);
+        }
+        if (!out.length) continue;
+        let zone = '', datum = ''; for (let m = 0; m < h; m++) { if (!zone) zone = cellAfter(aoa[m], /^zone:?$/i); if (!datum) datum = cellAfter(aoa[m], /^datum:?$/i); }
+        return {rows: out, sheet: name, zone, datum};
+      }
+    }
+    return null;
+  }
+  $('ctfile').addEventListener('change', ev => { pending = ev.target.files[0] || null; $('ctproc').disabled = !pending; say(pending ? 'اضغط «معالجة» لاستخراج جدول الإحداثيات.' : ''); });
+  $('ctproc').addEventListener('click', () => {
+    if (!pending) return; const f = pending, fr = new FileReader();
+    fr.onerror = () => say('تعذّرت قراءة الملف.', 'err');
+    fr.onload = () => {
+      try {
+        const res = extract(XLSX.read(new Uint8Array(fr.result), {type: 'array'}));
+        if (!res) { say('لم أجد جدول إحداثيات: المطلوب صف عناوين فيه عمودان Easting و Northing (أو X و Y) وتحته أرقام.', 'err'); return; }
+        CR = res.rows; srcName = f.name.replace(/\.[^.]+$/, '') || 'coordinates';
+        const ps = []; if (res.zone) ps.push('Zone ' + res.zone); if (res.datum) ps.push(res.datum);
+        $('ctmeta').textContent = (ps.length ? ps.join(' — ') + ' — ' : '') + 'المصدر: ' + f.name + ' (' + res.sheet + ')';
+        render(); say('تمت المعالجة: ' + CR.length + ' نقطة. يمكنك الآن استخدامها في الأداة.', 'ok');
+      } catch (err) { say('تعذّرت معالجة الملف. تأكد أنه xlsx أو csv سليم.', 'err'); }
+    };
+    fr.readAsArrayBuffer(f);
+  });
+  $('ctuse').addEventListener('click', () => {   // feed the processed table into the studio exactly like an uploaded sheet
+    if (!CR.length) return;
+    rows = [HEAD, ...CR.map(r => [r[0], r[1], r[2], r[3] === null ? '' : r[3], r[4]])];
+    $('fn').textContent = srcName + ' (from coordinates table, ' + CR.length + ' points)';
+    setup(); if (!CR.some(r => r[4])) $('cC').value = -1;   // no feature codes → one part per run of points
+    showTop('S'); run();
+    $('set').scrollIntoView({behavior: 'smooth', block: 'start'});
+  });
+  $('ctcopy').addEventListener('click', () => {
+    const t = [HEAD.join('\t')].concat(CR.map(r => [r[0], fmt(r[1]), fmt(r[2]), fmt(r[3]), r[4]].join('\t'))).join('\n');
+    try { navigator.clipboard.writeText(t).then(() => say('تم النسخ، الصقه في Excel.', 'ok'), () => say('تعذّر النسخ.', 'err')); } catch (e) { say('تعذّر النسخ.', 'err'); }
+  });
+  $('ctdl').addEventListener('click', () => {
+    const aoa = [HEAD].concat(CR.map(r => r.slice())), ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch: 8}, {wch: 18}, {wch: 18}, {wch: 18}, {wch: 14}];
+    for (let R = 1; R < aoa.length; R++) for (let C = 1; C <= 3; C++) { const c = ws[XLSX.utils.encode_cell({r: R, c: C})]; if (c && c.t === 'n') c.z = '0.000'; }
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Coordinates');
+    try { XLSX.writeFile(wb, srcName + '_processed.xlsx'); say('تم تحميل الملف: ' + srcName + '_processed.xlsx', 'ok'); } catch (e) { say('تعذّر تحميل الملف.', 'err'); }
+  });
+  window.getCR = () => CR; window.coordExtract = extract;
+})();
+
+// ======================= EXCEL → AUTOCAD COMMANDS TAB =======================
+(() => {
+  let AP = [], AName = 'points';   // AP rows: [id, E, N, Z|null, code]
+  const f3 = n => String(+Number(n).toFixed(3)), val = id => parseFloat($(id).value);
+  const isText = m => ['num', 'lvl', 'dsc', 'lbl'].includes(m);
+  function build() {
+    const m = $('acMode').value, h = val('acTH') || 1, rot = val('acRot') || 0, ox = val('acOX') || 0, oy = val('acOY') || 0, sides = Math.max(3, Math.round(val('acSides')) || 4), R = val('acR') || 1, o = [];
+    let skipped = 0;
+    if (m === 'lin' || m === 'ply') {   // one chained command
+      if (AP.length) { o.push(m === 'lin' ? 'LINE' : 'PLINE'); AP.forEach(r => o.push(`${f3(r[1])},${f3(r[2])}`)); o.push($('acClose').checked ? 'C' : ''); }
+    } else AP.forEach((r, i) => {
+      const x = f3(r[1]), y = f3(r[2]), tx = f3(r[1] + ox), ty = f3(r[2] + oy);
+      const T = txt => { if (txt === '' || txt === null || txt === undefined) { skipped++; return; } o.push(`-text ${i === 0 && $('acJ').checked ? 'J MC ' : ''}${tx},${ty} ${h} ${rot} ${txt}`); };
+      if (m === 'px') o.push(`point ${x},${y}`);
+      else if (m === 'pxz') o.push(`point ${x},${y},${f3(r[3] === null ? 0 : r[3])}`);
+      else if (m === 'num') T(r[0]);
+      else if (m === 'lvl') { if (r[3] === null) skipped++; else T('Z=' + f3(r[3])); }
+      else if (m === 'dsc') T(String(r[4] ?? '').trim());
+      else if (m === 'lbl') T(`E=${x} N=${y}`);
+      else if (m === 'pol') o.push(`pol ${sides} ${x},${y}  ${R}`);
+      else if (m === 'cir') o.push(`c ${x},${y} ${R}`);
+    });
+    return {text: o.length ? o.join('\n') + '\n' : '', lines: o.length, skipped};
+  }
+  window.acRefresh = () => {
+    const r = build(); $('acOut').value = r.text;
+    $('acInfo').textContent = `${AP.length} points → ${r.lines} lines` + (r.skipped ? ` · ${r.skipped} points skipped (no value for this command)` : '') + ' · units: metres (UTM WGS84 zone 36N)';
+    $('acSrc').textContent = 'Source: ' + AName;
+  };
+  const load = (rows, name) => { AP = rows.map(r => [r[0], +r[1], +r[2], r[3] === null || r[3] === '' || r[3] === undefined ? null : +r[3], r[4] ?? '']); AName = name; acRefresh(); };
+  $('acUseC').addEventListener('click', () => load(getCR(), 'Coordinates tab table'));
+  $('acFile').addEventListener('change', ev => {
+    const f = ev.target.files[0]; if (!f) return; const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const res = coordExtract(XLSX.read(new Uint8Array(fr.result), {type: 'array'}));
+        if (!res) { $('acSrc').textContent = '⚠ No Easting / Northing table found in this file.'; return; }
+        load(res.rows, f.name + ' (' + res.sheet + ')');
+      } catch (e) { $('acSrc').textContent = '⚠ Could not read this file.'; }
+    };
+    fr.readAsArrayBuffer(f);
+  });
+  $('atab').querySelectorAll('select,input[type=number],input[type=checkbox]').forEach(el => el.addEventListener('input', acRefresh));
+  $('acCopy').addEventListener('click', () => { const t = $('acOut').value; if (!t) return; $('acOut').select(); try { navigator.clipboard.writeText(t).then(() => alert('Copied — paste in the AutoCAD command line.'), () => document.execCommand('copy')); } catch (e) { document.execCommand('copy'); } });
+  $('acDl').addEventListener('click', () => { const t = $('acOut').value; if (t) save('excel_to_autocad_' + $('acMode').value + '.scr', new Blob([t], {type: 'text/plain'})); });
+  load(getCR(), 'Coordinates tab table');
+})();
+</script>
+</body>
+</html>
